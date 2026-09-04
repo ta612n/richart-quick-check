@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Richart 刷卡快查</title>
+<style>
+  :root{
+    --ink:#1c1f1a;
+    --paper:#f6f4ec;
+    --line:#d8d3c2;
+    --accent:#3d5c45;
+    --accent-soft:#e4ead9;
+    --gold:#a8823a;
+    --muted:#6b6a5f;
+    --hot:#c1542c;
+    --hot-soft:#fbe6dc;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC",sans-serif;
+    padding:20px 16px 60px;
+  }
+  .wrap{max-width:520px;margin:0 auto;}
+  header{margin-bottom:18px;}
+  h1{font-size:22px;margin:0 0 4px;letter-spacing:0.02em;}
+  .sub{color:var(--muted);font-size:13px;margin:0;}
+  .updated{color:var(--muted);font-size:11px;margin-top:4px;}
+  .search-box{position:sticky;top:0;background:var(--paper);padding:12px 0;z-index:10;}
+  input[type="text"]{
+    width:100%;padding:13px 16px;border-radius:12px;border:1.5px solid var(--line);
+    background:#fff;font-size:16px;color:var(--ink);outline:none;
+  }
+  input[type="text"]:focus{border-color:var(--accent);}
+  .quick-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;}
+  .tag{font-size:12px;padding:5px 10px;border-radius:999px;background:#fff;border:1px solid var(--line);color:var(--muted);cursor:pointer;}
+  .tag:active{background:var(--accent-soft);}
+  .plan{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:12px;}
+  .plan.hot{border-color:var(--hot);}
+  .plan-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;}
+  .plan-name{font-size:16px;font-weight:700;}
+  .plan-rate{font-size:13px;color:var(--accent);font-weight:700;background:var(--accent-soft);padding:2px 9px;border-radius:999px;}
+  .plan.hot .plan-rate{color:var(--hot);background:var(--hot-soft);}
+  .group{font-size:13px;line-height:1.7;color:#3a392f;margin-top:6px;}
+  .group b{color:var(--muted);font-weight:600;}
+  .merchants mark{background:#ffe9a8;border-radius:3px;padding:0 1px;}
+  .note{font-size:12px;color:var(--muted);margin-top:8px;}
+  .hidden{display:none !important;}
+  .empty{text-align:center;color:var(--muted);font-size:14px;padding:30px 10px;}
+  .card-tip{margin-top:22px;background:var(--accent-soft);border-radius:14px;padding:14px 16px;font-size:13px;line-height:1.7;color:#2c3a2e;}
+  .card-tip b{color:var(--accent);}
+  footer{text-align:center;color:var(--muted);font-size:11px;margin-top:24px;line-height:1.6;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Richart 刷卡快查</h1>
+    <p class="sub">輸入你要消費的地方，馬上知道要切哪個方案</p>
+    <p class="updated">依台新官網 2026/7/1–2027/3/31 權益頁更新</p>
+  </header>
+
+  <div class="search-box">
+    <input type="text" id="search" placeholder="例如：全家、機票、餐廳、蝦皮..." autocomplete="off">
+    <div class="quick-tags" id="tags"></div>
+  </div>
+
+  <div id="results"></div>
+
+  <div class="card-tip">
+    ✈️ <b>刷機票／海外旅遊時</b>：兩張卡都算「玩旅刷」通路，但保險等級不同——<b>FlyGo鈦金商務</b>保障較高（旅平險3,000萬＋海外全程醫療500萬），<b>@GoGo悠遊御璽</b>只有旅平險2,000萬。買機票建議優先用 FlyGo鈦金商務那張刷。
+  </div>
+
+  <footer>
+    通路內容以台新銀行公告為準，如有更新請以 Richart Life App 顯示為主<br>
+    Chill刷為限時活動（2026/7/8–2026/9/30），過期後請留意 App 內是否仍顯示此方案
+  </footer>
+</div>
+
+<script>
+const plans = [
+  {
+    name: "Chill刷",
+    rate: "最高10%",
+    hot: true,
+    note: "限時活動 2026/7/8–2026/9/30，限獨立店/官網，百貨櫃位、Uber Eats等外送平台、momo等網購不適用",
+    groups: [
+      { label: "火鍋/燒肉聚會 10%", items: ["詹記麻辣火鍋","萬客什鍋","海底撈","屋馬燒肉","茶六燒肉堂","新村站著吃","燒肉政宗","碳佐麻里","雞湯大叔","BRUN不然","貳樓","樂子the Diner"] },
+      { label: "飲料店 10%", items: ["50嵐","得正","五桐號","龜記","UG TEA","叮哥茶飲","CAFE!N","%Arabica","COMPOSE COFFEE"] },
+      { label: "追星/串流 5%", items: ["WEVERSE","K-MONSTAR","五大唱片","巴哈姆特","BOOK WALKER","Readmoo讀墨","Netflix","Disney+","愛爾達"] },
+      { label: "運動健身 5%", items: ["Anytime Fitness","健身工廠","World Gym","Adidas","New Balance","PUMA","Nike","HOKA","lululemon"] },
+      { label: "3C數位 3.3%", items: ["Apple直營(含官網)","Studio A","DJI","Insta360","GoPro","蝦皮","淘寶","酷澎","Uber Eats"] }
+    ]
+  },
+  {
+    name: "Pay著刷",
+    rate: "3.8%／2.3%",
+    note: "台新Pay/台新Pay+ 3.8%；LINE Pay、全盈+Pay 2.3%（無上限，常駐推薦）",
+    groups: [
+      { label: "適用支付", items: ["台新Pay綁定消費","台新Pay+綁定消費","LINE Pay綁定消費","全盈+Pay綁定消費"] }
+    ]
+  },
+  {
+    name: "天天刷",
+    rate: "3.3%",
+    note: "核卡後預設方案，日常消費用",
+    groups: [
+      { label: "日常採買", items: ["全家(限台新Pay)","7-11(限台新Pay)","萬家福","樂家康","大買家","唐吉訶德","LOPIA","智生活"] },
+      { label: "通勤交通", items: ["臺鐵","高鐵","台灣大車隊","LINEGO","Yoxi","Uber","台灣Bolt"] },
+      { label: "加油充電", items: ["中油直營","全國加油","全國特急電","源點EVOASIS","華城電能EVALUE","USPACE","Autopass車麻吉"] },
+      { label: "藥妝藥局", items: ["寶雅","康是美","屈臣氏","杏一醫療","大樹藥局","丁丁藥局","佑全保健藥妝","健康人生藥局"] }
+    ]
+  },
+  {
+    name: "大筆刷",
+    rate: "3.3%",
+    note: "百貨、裝修、時尚類消費",
+    groups: [
+      { label: "指定百貨", items: ["新光三越","遠東SOGO","廣三SOGO","遠東百貨","微風","台北101","遠東巨城","南紡購物中心","漢神百貨","漢神巨蛋","誠品生活","LaLaport"] },
+      { label: "指定Outlet", items: ["MITSUI OUTLET PARK","華泰名品城","SKM Park Outlets"] },
+      { label: "居家裝修", items: ["IKEA","特力屋","HOLA","宜得利","瑪黑家居"] },
+      { label: "時尚品味", items: ["UNIQLO","GU","ZARA","NET","lululemon"] }
+    ]
+  },
+  {
+    name: "好饗刷",
+    rate: "3.3%",
+    note: "吃喝玩樂類消費",
+    groups: [
+      { label: "全臺餐飲", items: ["全臺餐飲(不含餐券)","王品瘋Pay"] },
+      { label: "外送平台", items: ["Uber Eats","Foodpanda"] },
+      { label: "購票娛樂", items: ["拓元售票","KKTIX","年代售票","寬宏售票","OPENTIX","FunNow"] },
+      { label: "指定KTV", items: ["錢櫃","好樂迪","ONCOR","sing!go","享溫馨"] },
+      { label: "指定飯店", items: ["晶華國際酒店集團","雲朗觀光","台灣萬豪國際集團","煙波國際觀光集團","老爺酒店集團","福華集團","漢來飯店事業群","台北君悅酒店","高雄洲際酒店"] }
+    ]
+  },
+  {
+    name: "數趣刷",
+    rate: "3.3%",
+    note: "網路/數位消費",
+    groups: [
+      { label: "網購平台", items: ["蝦皮","momo","酷澎","PChome","淘寶","Amazon","東森","博客來","Richart Mart","PayEasy","iHerb","SHEIN","Farfetch","Olive Young"] },
+      { label: "線上課程", items: ["知識衛星","AmazingTalker","TutorABC","Hahow","PressPlay"] },
+      { label: "遊戲影音", items: ["MyCard","遊戲橘子","Steam","PlayStation","Nintendo","Netflix","Disney+"] },
+      { label: "AI服務", items: ["ChatGPT","Notion","Canva","Perplexity","Claude"] }
+    ]
+  },
+  {
+    name: "玩旅刷",
+    rate: "3.3%",
+    note: "出國/機票/訂房類消費（刷機票就是這個方案）",
+    groups: [
+      { label: "海外消費", items: ["海外實體刷卡","海外線上刷卡","歐洲國家交易"] },
+      { label: "航空公司", items: ["中華航空","長榮航空","星宇航空","台灣虎航","國泰航空","華信航空","立榮航空","樂桃航空","阿聯酋航空","亞洲航空","酷航","捷星航空","新加坡航空","日本航空","越捷航空"] },
+      { label: "海外交通/網路", items: ["Uber(海外)","Grab","SUICA","ICOCA","PASMO","WOWPASS","AIRSIM"] },
+      { label: "訂房平台", items: ["Klook","KKday","Agoda","Booking.com","Trip.com","Airbnb","Hotels.com","Expedia"] },
+      { label: "旅行社(限直營通路)", items: ["雄獅旅遊","易遊網","東南旅遊","可樂旅遊","長汎假期","五福旅遊","喜鴻假期","易飛旅遊","燦星旅遊","加利利旅行社","鳳凰國際旅行社","山富旅遊","行健旅遊"] }
+    ]
+  },
+  {
+    name: "假日刷",
+    rate: "2%",
+    note: "國定假日限定（不含天災假），含LINE Pay/全盈+Pay綁定；北捷感應支付不適用",
+    groups: [
+      { label: "適用範圍", items: ["國定假日不限通路消費","含手動刷卡繳保費"] }
+    ]
+  },
+  {
+    name: "保費",
+    rate: "免切換 1.3%",
+    note: "刷卡繳保費一次付清，任何方案下都固定享1.3%，不含國外保險、躉繳保費",
+    groups: []
+  }
+];
+
+const searchInput = document.getElementById('search');
+const resultsEl = document.getElementById('results');
+const tagsEl = document.getElementById('tags');
+
+function highlight(text, q){
+  if(!q) return text;
+  const idx = text.toLowerCase().indexOf(q.toLowerCase());
+  if(idx === -1) return text;
+  return text.slice(0,idx) + '<mark>' + text.slice(idx, idx+q.length) + '</mark>' + text.slice(idx+q.length);
+}
+
+function render(query){
+  const q = (query || '').trim().toLowerCase();
+  resultsEl.innerHTML = '';
+  let anyMatch = false;
+
+  plans.forEach(plan => {
+    const planNameMatch = plan.name.toLowerCase().includes(q);
+    const matchedGroups = plan.groups
+      .map(g => ({ label: g.label, items: q ? g.items.filter(i => i.toLowerCase().includes(q)) : g.items }))
+      .filter(g => g.items.length > 0);
+
+    if(q && matchedGroups.length === 0 && !planNameMatch) return;
+    anyMatch = true;
+
+    const shownGroups = (q && matchedGroups.length) ? matchedGroups : plan.groups;
+    const groupsHtml = shownGroups.map(g => `<div class="group merchants"><b>${g.label}：</b>${g.items.map(i => highlight(i, query)).join('、')}</div>`).join('');
+
+    const div = document.createElement('div');
+    div.className = 'plan' + (plan.hot ? ' hot' : '');
+    div.innerHTML = `
+      <div class="plan-head">
+        <span class="plan-name">${plan.name}</span>
+        <span class="plan-rate">${plan.rate}</span>
+      </div>
+      ${groupsHtml}
+      <div class="note">${plan.note}</div>
+    `;
+    resultsEl.appendChild(div);
+  });
+
+  if(!anyMatch){
+    resultsEl.innerHTML = '<div class="empty">沒有符合的通路，建議直接查 Richart Life App 或當作一般消費 0.3%</div>';
+  }
+}
+
+searchInput.addEventListener('input', e => render(e.target.value));
+
+const quickTags = ["機票", "全家", "餐廳", "網購", "加油", "百貨", "飲料店"];
+quickTags.forEach(t => {
+  const el = document.createElement('div');
+  el.className = 'tag';
+  el.textContent = t;
+  el.onclick = () => { searchInput.value = t; render(t); };
+  tagsEl.appendChild(el);
+});
+
+render('');
+</script>
+</body>
+</html>
